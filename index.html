@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width">
+  <title>デモ</title>
+  <style>
+    #map {
+      position: relative;
+      width: 900px;
+      height: 600px;
+      background-image: url("images/IMG_9526.jpg"); 
+      background-size: cover;
+      border: 1px solid #ccc;
+    }
+
+    #pin {
+      position: absolute;
+      width: 15px;
+      height: 15px;
+      background-image: url("https://cdn-icons-png.flaticon.com/512/684/684908.png");
+      background-size: contain;
+      background-repeat: no-repeat;
+      transform: translate(-50%, -100%);
+    }
+
+    #info, #information, #ipadd 
+    {margin-top: 20px;
+    font-family: sans-serif;}
+  </style>
+</head>
+<body>
+ <h2>デモマップ</h2>
+  <div id="map">
+    <div id="pin"></div>
+  </div>
+  <div id="info"></div>
+  <div id="information"></div>
+  <div id="statusText"></div>
+  <div id="画面表示テキスト"></div>
+  <p id="ipadd"></p>
+  <button id="startButton">動作検出を開始</button>
+
+  <script>
+    const script = document.createElement('script');
+    script.src = 'https://ipinfo.io?callback=callback';
+    document.head.appendChild(script);
+
+    function callback(data) {
+      document.getElementById("ipadd").innerHTML = "IPアドレス:" + data.ip;
+    }
+
+    const map = document.getElementById("map");
+    const pin = document.getElementById("pin");
+    const info = document.getElementById("info");
+    const information = document.getElementById("information");
+    const statusText = document.getElementById("statusText");
+    let infoArray = [];
+
+    //地図のウェブ上での位置
+    const idoTop = 35.745909;
+    const idoBottom = 35.744116;
+    const keidoLeft = 139.586303;
+    const keidoRight = 139.589590;
+
+    // 成功時の処理
+    const successCallback = (position) => {
+      const ido = position.coords.latitude;
+      const keido = position.coords.longitude;
+      const speed = position.coords.speed;
+      const altitude = position.coords.altitude;
+      //判定
+      const insideIdo = (ido <= idoTop) && (ido >= idoBottom);
+      const insideKeido = (keido >= keidoLeft) && (keido <= keidoRight);
+      if (!(insideIdo && insideKeido)) {
+        info.innerHTML = "あなたは現在学校にいません。";
+        pin.style.display = "none";
+        return;
+      } else {
+        pin.style.display = "block";
+        //緯度経度をマップの座標に変換
+        const x = ((keido - keidoLeft) / (keidoRight - keidoLeft)) * map.clientWidth;
+        const y = ((idoTop - ido) / (idoTop - idoBottom)) * map.clientHeight;
+
+        const offsetX = 0;
+        const offsetY = 0;
+
+        pin.style.left = `${x + offsetX}px`;
+        pin.style.top = `${y + offsetY}px`;
+
+        info.innerHTML = `
+          緯度: ${ido}<br>
+          経度: ${keido}<br>
+          高度: ${altitude ?? "不明"}<br>
+          速度: ${speed ?? "不明"} m/s
+        `;
+
+        infoArray.緯度 = ido;
+        infoArray.経度 = keido;
+        infoArray.高度 = altitude;
+        infoArray.速度 = speed;
+
+        information.innerHTML = '';
+        for (let key in infoArray) {
+          if (["緯度", "経度", "高度", "速度"].includes(key)) {
+            information.innerHTML += key + ": " + infoArray[key] + "<br>";
+          }
+        }
+      }
+    };
+
+    const failureCallback = (error) => {
+      info.innerHTML = "位置情報の取得に失敗しました。";
+    };
+
+    navigator.geolocation.watchPosition(successCallback, failureCallback);
+
+    // センサーから加速度を取得して書き出す処理
+    const deviceOrientationTest = () => {
+      window.addEventListener("devicemotion", (event) => {
+        information.innerHTML = "";
+
+        infoArray.加速度X軸 = parseFloat(event.acceleration.x);
+        infoArray.加速度Y軸 = parseFloat(event.acceleration.y);
+        infoArray.加速度Z軸 = parseFloat(event.acceleration.z);
+
+        infoArray.加速度重力加速度X軸 = parseFloat(event.accelerationIncludingGravity.x);
+        infoArray.加速度重力加速度Y軸 = parseFloat(event.accelerationIncludingGravity.y);
+        infoArray.加速度重力加速度Z軸 = parseFloat(event.accelerationIncludingGravity.z);
+
+        infoArray.回転加速度X軸 = parseFloat(event.rotationRate.beta);
+        infoArray.回転加速度Y軸 = parseFloat(event.rotationRate.gamma);
+        infoArray.回転加速度Z軸 = parseFloat(event.rotationRate.alpha);
+      });
+    };
+
+    // ループ実行
+    const deviceOrientationLoop = () => {
+      deviceOrientationTest();
+      window.requestAnimationFrame(deviceOrientationLoop);
+    };
+    deviceOrientationLoop();
+
+    // 動作検出処理（センサー）
+    function startMotionDetection() {
+      const THRESHOLD = 0.3;
+
+      window.addEventListener("devicemotion", (event) => {
+        const ax = event.acceleration.x || 0;
+        const ay = event.acceleration.y || 0;
+        const az = event.acceleration.z || 0;
+
+        const totalAccel = Math.sqrt(ax * ax + ay * ay + az * az);
+
+        if (totalAccel > THRESHOLD) {
+          displayText.innerHTML = "移動中または動きあり";
+        } else {
+          displayText.innerHTML = "静止しているかほとんど動いていない";
+        }
+      });
+    }
+  </script>
+</body>
+</html>
+
